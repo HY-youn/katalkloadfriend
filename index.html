@@ -78,8 +78,10 @@
         // 카카오 로그인
         function kakaoLogin() {
             Kakao.Auth.login({
+                redirectUri: 'https://katalkloadfriend.vercel.app/auth/kakao/callback',
                 scope: 'friends',
                 success: function(response) {
+                    
                     document.getElementById('status').innerText = '로그인 성공!';
                     document.getElementById('getFriendsBtn').style.display = 'block';
                     document.getElementById('loginBtn').style.display = 'none';

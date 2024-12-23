@@ -1,0 +1,4 @@
+.gitignorevenv/
+__pycache__/
+*.pyc
+

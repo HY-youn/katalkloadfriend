@@ -72,31 +72,37 @@
         const itemsPerPage = 100;
         let totalFriends = [];
 
-        // Kakao SDK 초기화
-        Kakao.init(CLIENT_ID);
+        // Kakao SDK 초기화 - JavaScript 키 사용
+        Kakao.init('b9398e2db7be2c66f40fb397c05467fe');  // JavaScript 키로 변경
 
         // 카카오 로그인
         function kakaoLogin() {
             Kakao.Auth.login({
-                redirectUri: 'https://katalkloadfriend.vercel.app/auth/kakao/callback',
-                scope: 'friends',
                 success: function(response) {
-                    
+                    console.log(response);
                     document.getElementById('status').innerText = '로그인 성공!';
                     document.getElementById('getFriendsBtn').style.display = 'block';
                     document.getElementById('loginBtn').style.display = 'none';
                 },
                 fail: function(error) {
+                    console.error(error);
                     document.getElementById('status').innerText = '로그인 실패: ' + error.message;
-                }
+                },
+                scope: 'friends'
             });
         }
 
         // 친구 목록 가져오기
         function getFriends() {
+            if (!Kakao.Auth.getAccessToken()) {
+                document.getElementById('status').innerText = '로그인이 필요합니다.';
+                return;
+            }
+
             Kakao.API.request({
                 url: '/v1/api/talk/friends',
                 success: function(response) {
+                    console.log(response);
                     totalFriends = response.elements;
                     displayFriends();
                     updatePaginationButtons();
@@ -104,6 +110,7 @@
                         `총 ${totalFriends.length}명의 친구를 불러왔습니다.`;
                 },
                 fail: function(error) {
+                    console.error(error);
                     document.getElementById('status').innerText = 
                         '친구 목록 가져오기 실패: ' + error.message;
                 }
@@ -123,8 +130,8 @@
                 const friendDiv = document.createElement('div');
                 friendDiv.className = 'friend-item';
                 friendDiv.innerHTML = `
-                    <span>${friend.profile_nickname}</span>
-                    <span>ID: ${friend.uuid}</span>
+                    <span>${friend.profile_nickname || '이름 없음'}</span>
+                    <span>ID: ${friend.uuid || 'ID 없음'}</span>
                 `;
                 friendListDiv.appendChild(friendDiv);
             });
@@ -160,13 +167,19 @@
         }
 
         // 초기 상태 체크
-        Kakao.Auth.getStatusInfo(function(statusObj) {
-            if (statusObj.status === 'connected') {
-                document.getElementById('getFriendsBtn').style.display = 'block';
-                document.getElementById('loginBtn').style.display = 'none';
-                document.getElementById('status').innerText = '이미 로그인되어 있습니다.';
-            }
-        });
+        window.onload = function() {
+            Kakao.Auth.getStatusInfo()
+                .then(function(res) {
+                    if (res.status === 'connected') {
+                        document.getElementById('getFriendsBtn').style.display = 'block';
+                        document.getElementById('loginBtn').style.display = 'none';
+                        document.getElementById('status').innerText = '이미 로그인되어 있습니다.';
+                    }
+                })
+                .catch(function(err) {
+                    console.error('Status check failed:', err);
+                });
+        };
     </script>
 </body>
 </html>

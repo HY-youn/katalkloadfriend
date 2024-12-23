@@ -82,20 +82,17 @@
 // 로그인 함수도 수정
 function kakaoLogin() {
     Kakao.Auth.login({
+        scope: 'friends',
         success: function(authObj) {
-            console.log('로그인 성공', authObj);
-            const token = authObj.access_token;
-            if (token) {
-                document.getElementById('getFriendsBtn').style.display = 'block';
-                document.getElementById('loginBtn').style.display = 'none';
-                updateStatus('로그인 성공!');
-            }
+            console.log('로그인 성공:', authObj);
+            document.getElementById('getFriendsBtn').style.display = 'block';
+            document.getElementById('loginBtn').style.display = 'none';
+            updateStatus('로그인 성공!');
         },
-        fail: function(err) {
-            console.error('로그인 실패', err);
-            updateStatus('로그인 실패: ' + err.message, true);
-        },
-        scope: 'friends' // 친구 목록 권한 요청
+        fail: function(error) {
+            console.error('로그인 실패:', error);
+            updateStatus('로그인 실패: ' + error.message, true);
+        }
     });
 }
 
@@ -119,20 +116,12 @@ function kakaoLogout() {
             return;
         }
 
+        // 간단하게 API 요청
         const response = await Kakao.API.request({
-            url: '/v1/api/talk/friends',
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json;charset=utf-8'
-            },
-            success: function(response) {
-                console.log('성공:', response);
-            },
-            fail: function(error) {
-                console.log('실패:', error);
-            }
+            url: '/v1/api/talk/friends'
         });
+
+        console.log('API 응답:', response);
 
         if (response && response.elements) {
             totalFriends = response.elements;
@@ -142,7 +131,31 @@ function kakaoLogout() {
         }
     } catch (error) {
         console.error('상세 오류:', error);
-        updateStatus(`친구 목록 가져오기 실패: ${error.message}`, true);
+        
+        // 구체적인 에러 메시지 표시
+        if (error.code) {
+            switch(error.code) {
+                case -1:
+                    updateStatus('카카오 API 내부 오류가 발생했습니다', true);
+                    break;
+                case -2:
+                    updateStatus('카카오 API 파라미터가 잘못되었습니다', true);
+                    break;
+                case -3:
+                    updateStatus('요청한 API를 찾을 수 없습니다', true);
+                    break;
+                case -4:
+                    updateStatus('API에 연결할 수 없습니다', true);
+                    break;
+                case -5:
+                    updateStatus('친구 목록을 가져올 권한이 없습니다. 팀원으로 등록해주세요', true);
+                    break;
+                default:
+                    updateStatus(`친구 목록 가져오기 실패: ${error.message}`, true);
+            }
+        } else {
+            updateStatus(`친구 목록 가져오기 실패: ${error.message}`, true);
+        }
     }
 }
 

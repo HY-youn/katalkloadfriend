@@ -77,55 +77,64 @@
         }
 
         // 카카오 로그인
-        function kakaoLogin() {
-            Kakao.Auth.login({
-                scope: 'friends,talk_message',
-                success: function(response) {
-                    console.log('로그인 성공:', response);
-                    updateStatus('로그인 성공!');
-                    document.getElementById('getFriendsBtn').style.display = 'block';
-                    document.getElementById('loginBtn').style.display = 'none';
-                },
-                fail: function(error) {
-                    console.error('로그인 실패:', error);
-                    updateStatus('로그인 실패: ' + JSON.stringify(error), true);
-                }
-            });
+     // 카카오 로그인 함수 수정
+function kakaoLogin() {
+    Kakao.Auth.login({
+        scope: 'friends', // 친구 목록 권한 요청
+        success: function(response) {
+            console.log('로그인 성공:', response);
+            // 토큰 정보 확인
+            const token = Kakao.Auth.getAccessToken();
+            console.log('액세스 토큰:', token);
+            
+            document.getElementById('getFriendsBtn').style.display = 'block';
+            document.getElementById('loginBtn').style.display = 'none';
+            updateStatus('로그인 성공!');
+        },
+        fail: function(error) {
+            console.error('로그인 실패:', error);
+            updateStatus('로그인 실패: ' + error.message, true);
+        }
+    });
+}
+       // 친구 목록 가져오기 함수 수정
+async function getFriends() {
+    try {
+        const token = Kakao.Auth.getAccessToken();
+        if (!token) {
+            updateStatus('로그인이 필요합니다', true);
+            return;
         }
 
-        // 친구 목록 가져오기
-        async function getFriends() {
-            try {
-                // 로그인 상태 확인
-                if (!Kakao.Auth.getAccessToken()) {
-                    updateStatus('로그인이 필요합니다.', true);
-                    return;
-                }
+        // 권한 범위 확인
+        const scopes = await Kakao.Auth.getScopes();
+        console.log('현재 권한:', scopes);
+        
+        if (!scopes.includes('friends')) {
+            updateStatus('친구 목록 접근 권한이 없습니다', true);
+            return;
+        }
 
-                const response = await Kakao.API.request({
-                    url: '/v1/api/talk/friends'
-                });
-
-                console.log('친구 목록 응답:', response);
-
-                if (response && response.elements) {
-                    totalFriends = response.elements;
-                    displayFriends();
-                    updatePaginationButtons();
-                    updateStatus(`총 ${totalFriends.length}명의 친구를 불러왔습니다.`);
-                } else {
-                    throw new Error('친구 목록 데이터가 없습니다.');
-                }
-            } catch (error) {
-                console.error('친구 목록 가져오기 실패:', error);
-                updateStatus('친구 목록 가져오기 실패: ' + error.message, true);
-                
-                // 상세 에러 정보 표시
-                if (error.response) {
-                    console.error('에러 응답:', error.response);
-                }
+        const response = await Kakao.API.request({
+            url: '/v1/api/talk/friends',
+            headers: {
+                'Authorization': `Bearer ${token}`
             }
+        });
+
+        console.log('친구 목록 응답:', response);
+        
+        if (response && response.elements) {
+            totalFriends = response.elements;
+            displayFriends();
+            updatePaginationButtons();
+            updateStatus(`총 ${totalFriends.length}명의 친구를 불러왔습니다.`);
         }
+    } catch (error) {
+        console.error('친구 목록 가져오기 실패:', error);
+        updateStatus('친구 목록 가져오기 실패: ' + error.message, true);
+    }
+}
 
         // 친구 목록 표시
         function displayFriends() {
@@ -159,6 +168,17 @@
         const itemsPerPage = 100;
         let totalFriends = [];
 
+        function kakaoLogout() {
+    if (!Kakao.Auth.getAccessToken()) {
+        updateStatus('로그인되어 있지 않습니다');
+        return;
+    }
+    Kakao.Auth.logout(function() {
+        updateStatus('로그아웃 되었습니다');
+        document.getElementById('getFriendsBtn').style.display = 'none';
+        document.getElementById('loginBtn').style.display = 'block';
+    });
+}
         // 페이지네이션 함수들은 동일하게 유지
         function updatePaginationButtons() {
             const totalPages = Math.ceil(totalFriends.length / itemsPerPage);

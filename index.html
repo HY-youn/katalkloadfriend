@@ -75,18 +75,12 @@
             statusDiv.textContent = message;
             statusDiv.className = isError ? 'error' : '';
         }
-
-        // 카카오 로그인
-     // 카카오 로그인 함수 수정
+// 로그인 함수도 수정
 function kakaoLogin() {
     Kakao.Auth.login({
-        scope: 'friends', // 친구 목록 권한 요청
+        scope: 'friends',
         success: function(response) {
             console.log('로그인 성공:', response);
-            // 토큰 정보 확인
-            const token = Kakao.Auth.getAccessToken();
-            console.log('액세스 토큰:', token);
-            
             document.getElementById('getFriendsBtn').style.display = 'block';
             document.getElementById('loginBtn').style.display = 'none';
             updateStatus('로그인 성공!');
@@ -97,7 +91,7 @@ function kakaoLogin() {
         }
     });
 }
-       // 친구 목록 가져오기 함수 수정
+    // 친구 목록 가져오기 함수 수정
 async function getFriends() {
     try {
         const token = Kakao.Auth.getAccessToken();
@@ -106,20 +100,9 @@ async function getFriends() {
             return;
         }
 
-        // 권한 범위 확인
-        const scopes = await Kakao.Auth.getScopes();
-        console.log('현재 권한:', scopes);
-        
-        if (!scopes.includes('friends')) {
-            updateStatus('친구 목록 접근 권한이 없습니다', true);
-            return;
-        }
-
+        // 직접 API 요청
         const response = await Kakao.API.request({
-            url: '/v1/api/talk/friends',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+            url: '/v1/api/talk/friends'
         });
 
         console.log('친구 목록 응답:', response);
@@ -132,6 +115,15 @@ async function getFriends() {
         }
     } catch (error) {
         console.error('친구 목록 가져오기 실패:', error);
+        
+        // 권한 문제인 경우 재로그인 유도
+        if (error.code === -401 || error.code === -403) {
+            updateStatus('권한이 필요합니다. 다시 로그인해주세요', true);
+            document.getElementById('loginBtn').style.display = 'block';
+            document.getElementById('getFriendsBtn').style.display = 'none';
+            return;
+        }
+        
         updateStatus('친구 목록 가져오기 실패: ' + error.message, true);
     }
 }

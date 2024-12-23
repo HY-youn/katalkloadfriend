@@ -54,6 +54,7 @@
     <div class="container">
         <h1>카카오톡 친구목록</h1>
         <button id="loginBtn" onclick="kakaoLogin()">카카오톡 로그인</button>
+        <button id="logoutBtn" onclick="kakaoLogout()" style="margin-left: 10px;">로그아웃</button>
         <button id="getFriendsBtn" onclick="getFriends()" style="display: none;">친구목록 가져오기</button>
         <div id="status"></div>
         <div id="friendList"></div>
@@ -90,6 +91,18 @@ function kakaoLogin() {
             updateStatus('로그인 실패: ' + error.message, true);
         }
     });
+}
+
+function kakaoLogout() {
+    if (Kakao.Auth.getAccessToken()) {
+        Kakao.Auth.logout(function() {
+            alert('로그아웃 되었습니다. 다시 로그인해주세요.');
+            document.getElementById('getFriendsBtn').style.display = 'none';
+            document.getElementById('loginBtn').style.display = 'block';
+            document.getElementById('status').innerText = '';
+            window.location.reload();
+        });
+    }
 }
     // 친구 목록 가져오기 함수 수정
 async function getFriends() {

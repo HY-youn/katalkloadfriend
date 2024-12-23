@@ -66,55 +66,65 @@
 
     <script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
     <script>
-        // 전역 변수 설정
-        const CLIENT_ID = '069bd62145d0e4923041dbea4fb7984b';
-        let currentPage = 1;
-        const itemsPerPage = 100;
-        let totalFriends = [];
+        // Kakao SDK 초기화
+        Kakao.init('6a2aa0da606e83eb052f1735e92abbba');
 
-        // Kakao SDK 초기화 - JavaScript 키 사용
-        Kakao.init('b9398e2db7be2c66f40fb397c05467fe');  // JavaScript 키로 변경
+        // 로그인 상태 표시 함수
+        function updateStatus(message, isError = false) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = isError ? 'error' : '';
+        }
 
         // 카카오 로그인
         function kakaoLogin() {
             Kakao.Auth.login({
+                scope: 'friends,talk_message',
                 success: function(response) {
-                    console.log(response);
-                    document.getElementById('status').innerText = '로그인 성공!';
+                    console.log('로그인 성공:', response);
+                    updateStatus('로그인 성공!');
                     document.getElementById('getFriendsBtn').style.display = 'block';
                     document.getElementById('loginBtn').style.display = 'none';
                 },
                 fail: function(error) {
-                    console.error(error);
-                    document.getElementById('status').innerText = '로그인 실패: ' + error.message;
-                },
-                scope: 'friends'
+                    console.error('로그인 실패:', error);
+                    updateStatus('로그인 실패: ' + JSON.stringify(error), true);
+                }
             });
         }
 
         // 친구 목록 가져오기
-        function getFriends() {
-            if (!Kakao.Auth.getAccessToken()) {
-                document.getElementById('status').innerText = '로그인이 필요합니다.';
-                return;
-            }
+        async function getFriends() {
+            try {
+                // 로그인 상태 확인
+                if (!Kakao.Auth.getAccessToken()) {
+                    updateStatus('로그인이 필요합니다.', true);
+                    return;
+                }
 
-            Kakao.API.request({
-                url: '/v1/api/talk/friends',
-                success: function(response) {
-                    console.log(response);
+                const response = await Kakao.API.request({
+                    url: '/v1/api/talk/friends'
+                });
+
+                console.log('친구 목록 응답:', response);
+
+                if (response && response.elements) {
                     totalFriends = response.elements;
                     displayFriends();
                     updatePaginationButtons();
-                    document.getElementById('status').innerText = 
-                        `총 ${totalFriends.length}명의 친구를 불러왔습니다.`;
-                },
-                fail: function(error) {
-                    console.error(error);
-                    document.getElementById('status').innerText = 
-                        '친구 목록 가져오기 실패: ' + error.message;
+                    updateStatus(`총 ${totalFriends.length}명의 친구를 불러왔습니다.`);
+                } else {
+                    throw new Error('친구 목록 데이터가 없습니다.');
                 }
-            });
+            } catch (error) {
+                console.error('친구 목록 가져오기 실패:', error);
+                updateStatus('친구 목록 가져오기 실패: ' + error.message, true);
+                
+                // 상세 에러 정보 표시
+                if (error.response) {
+                    console.error('에러 응답:', error.response);
+                }
+            }
         }
 
         // 친구 목록 표시
@@ -125,6 +135,11 @@
 
             const friendListDiv = document.getElementById('friendList');
             friendListDiv.innerHTML = '';
+
+            if (currentFriends.length === 0) {
+                friendListDiv.innerHTML = '<div class="friend-item">표시할 친구가 없습니다.</div>';
+                return;
+            }
 
             currentFriends.forEach(friend => {
                 const friendDiv = document.createElement('div');
@@ -140,14 +155,17 @@
                 `${currentPage} / ${Math.ceil(totalFriends.length / itemsPerPage)} 페이지`;
         }
 
-        // 페이지네이션 버튼 업데이트
+        let currentPage = 1;
+        const itemsPerPage = 100;
+        let totalFriends = [];
+
+        // 페이지네이션 함수들은 동일하게 유지
         function updatePaginationButtons() {
             const totalPages = Math.ceil(totalFriends.length / itemsPerPage);
             document.getElementById('prevBtn').disabled = currentPage === 1;
             document.getElementById('nextBtn').disabled = currentPage === totalPages;
         }
 
-        // 이전 페이지
         function prevPage() {
             if (currentPage > 1) {
                 currentPage--;
@@ -156,7 +174,6 @@
             }
         }
 
-        // 다음 페이지
         function nextPage() {
             const totalPages = Math.ceil(totalFriends.length / itemsPerPage);
             if (currentPage < totalPages) {
@@ -166,19 +183,19 @@
             }
         }
 
-        // 초기 상태 체크
-        window.onload = function() {
-            Kakao.Auth.getStatusInfo()
-                .then(function(res) {
-                    if (res.status === 'connected') {
-                        document.getElementById('getFriendsBtn').style.display = 'block';
-                        document.getElementById('loginBtn').style.display = 'none';
-                        document.getElementById('status').innerText = '이미 로그인되어 있습니다.';
-                    }
-                })
-                .catch(function(err) {
-                    console.error('Status check failed:', err);
-                });
+        // 페이지 로드 시 초기 상태 체크
+        window.onload = async function() {
+            try {
+                const status = await Kakao.Auth.getStatusInfo();
+                if (status.status === 'connected') {
+                    document.getElementById('getFriendsBtn').style.display = 'block';
+                    document.getElementById('loginBtn').style.display = 'none';
+                    updateStatus('이미 로그인되어 있습니다.');
+                }
+            } catch (error) {
+                console.error('상태 확인 실패:', error);
+                updateStatus('로그인 상태 확인 실패', true);
+            }
         };
     </script>
 </body>
